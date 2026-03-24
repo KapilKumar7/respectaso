@@ -467,15 +467,16 @@ class ITunesSearchService:
             return None
 
     def search_apps(
-        self, keyword: str, country: str = "us", limit: int = 10
+        self, keyword: str, country: str = "us", limit: int = 10, entity: str = "software"
     ) -> list[dict]:
         """
-        Search for iOS apps matching a keyword.
+        Search for iOS/macOS apps matching a keyword.
 
         Args:
             keyword: The search term.
             country: Two-letter country code (default: us).
             limit: Max results to return (default: 10).
+            entity: software (iOS) or macSoftware (macOS).
 
         Returns:
             List of dicts with app data.
@@ -486,7 +487,7 @@ class ITunesSearchService:
                 params={
                     "term": keyword,
                     "country": country,
-                    "entity": "software",
+                    "entity": entity,
                     "limit": limit,
                 },
                 timeout=30,
@@ -504,7 +505,7 @@ class ITunesSearchService:
             return []
 
     def find_app_rank(
-        self, keyword: str, track_id: int, country: str = "us"
+        self, keyword: str, track_id: int, country: str = "us", entity: str = "software"
     ) -> int | None:
         """
         Find where a specific app ranks for a keyword.
@@ -516,11 +517,12 @@ class ITunesSearchService:
             keyword: The search term.
             track_id: The iTunes trackId to look for.
             country: Two-letter country code.
+            entity: software (iOS) or macSoftware (macOS).
 
         Returns:
             1-based rank position, or None if not in top 200.
         """
-        results = self.search_apps(keyword, country=country, limit=200)
+        results = self.search_apps(keyword, country=country, limit=200, entity=entity)
         for i, app in enumerate(results):
             if app.get("trackId") == track_id:
                 return i + 1

@@ -130,6 +130,12 @@ class SearchResult(models.Model):
         default="us",
         help_text="Country code used for this search",
     )
+    platform = models.CharField(
+        max_length=10,
+        choices=[("ios", "iOS / iPadOS"), ("macos", "macOS")],
+        default="ios",
+        help_text="Target platform",
+    )
     searched_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -139,22 +145,23 @@ class SearchResult(models.Model):
         return f"{self.keyword.keyword} — {self.searched_at:%Y-%m-%d %H:%M}"
 
     @classmethod
-    def upsert_today(cls, keyword, country, **fields):
+    def upsert_today(cls, keyword, country, platform="ios", **fields):
         """
-        Create or replace today's result for a keyword+country pair.
+        Create or replace today's result for a keyword+country+platform triplet.
 
         If a result already exists for today, delete it and create a fresh one.
-        This ensures exactly one data point per keyword per country per day.
+        This ensures exactly one data point per keyword per country per platform per day.
         """
         today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
         today_end = today_start + timedelta(days=1)
         cls.objects.filter(
             keyword=keyword,
             country=country,
+            platform=platform,
             searched_at__gte=today_start,
             searched_at__lt=today_end,
         ).delete()
-        return cls.objects.create(keyword=keyword, country=country, **fields)
+        return cls.objects.create(keyword=keyword, country=country, platform=platform, **fields)
 
     @property
     def difficulty_label(self):

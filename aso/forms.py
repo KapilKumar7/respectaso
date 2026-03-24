@@ -82,6 +82,15 @@ class KeywordSearchForm(forms.Form):
         widget=forms.HiddenInput(),
         help_text="Comma-separated country codes (max 5).",
     )
+    platform = forms.ChoiceField(
+        choices=[("ios", "iOS / iPadOS"), ("macos", "macOS")],
+        initial="ios",
+        widget=forms.Select(
+            attrs={
+                "class": "w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500",
+            }
+        ),
+    )
 
     def clean_countries(self):
         """Parse and validate comma-separated country codes."""
@@ -112,4 +121,13 @@ class OpportunitySearchForm(forms.Form):
     app_id = forms.IntegerField(
         required=False,
         widget=forms.HiddenInput(),
+    )
+    platform = forms.ChoiceField(
+        choices=[("ios", "iOS / iPadOS"), ("macos", "macOS")],
+        initial="ios",
+        widget=forms.Select(
+            attrs={
+                "class": "w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500",
+            }
+        ),
     )

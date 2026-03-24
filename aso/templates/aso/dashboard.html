@@ -75,6 +75,12 @@
                     </label>
                     {{ search_form.keywords }}
                 </div>
+                <div class="w-28 sm:w-36">
+                    <label for="id_platform" class="block text-xs font-medium text-slate-300 mb-1.5">
+                        Platform
+                    </label>
+                    {{ search_form.platform }}
+                </div>
                 <div class="flex items-end">
                     <button type="submit" id="search-btn"
                             class="bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2 whitespace-nowrap">
@@ -281,6 +287,7 @@
                     <thead>
                         <tr class="border-b border-white/10">
                             <th class="text-left text-xs font-medium text-slate-400 px-3 py-2 cursor-pointer hover:text-slate-200 select-none" onclick="sortHistory('keyword')">Keyword <span class="sort-indicator text-slate-500">{% if current_sort == 'keyword' %}{% if current_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}</span></th>
+                            <th class="text-center text-xs font-medium text-slate-400 px-3 py-2">Platform</th>
                             {% if show_rank %}<th class="text-center text-xs font-medium text-slate-400 px-3 py-2 cursor-pointer hover:text-slate-200 select-none" onclick="sortHistory('rank')">Rank <span class="sort-indicator text-slate-500">{% if current_sort == 'rank' %}{% if current_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}</span></th>{% endif %}
                             <th class="text-center text-xs font-medium text-slate-400 px-3 py-2 cursor-pointer hover:text-slate-200 select-none" onclick="sortHistory('popularity')">Popularity <span class="sort-indicator text-slate-500">{% if current_sort == 'popularity' %}{% if current_dir == 'asc' %}▲{% else %}▼{% endif %}{% endif %}</span></th>
                             <th class="text-center text-xs font-medium text-slate-400 px-3 py-2 cursor-pointer hover:text-slate-200 select-none" onclick="sortHistory('difficulty')">
@@ -307,6 +314,9 @@
                                 {% if result.keyword.app %}
                                 <span class="text-slate-500 text-[10px] block">{{ result.keyword.app.name }}</span>
                                 {% endif %}
+                            </td>
+                            <td class="px-3 py-2 text-center text-xs text-slate-400" title="{{ result.platform|upper }}">
+                                {% if result.platform == 'macos' %} Mac{% else %}📱 iOS{% endif %}
                             </td>
                             {% if show_rank %}
                             <td class="px-3 py-2 text-center text-sm font-semibold" data-sort-value="{{ result.app_rank|default:'999999' }}">
@@ -398,6 +408,8 @@
                                     </button>
                                     {% endif %}
                                     <button onclick="refreshKeyword({{ result.keyword.id }}, this)" title="Refresh difficulty"
+                                            data-country="{{ result.country }}"
+                                            data-platform="{{ result.platform }}"
                                             class="text-slate-500 hover:text-purple-400 transition-colors p-1 rounded hover:bg-white/5">
                                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -414,7 +426,7 @@
                         </tr>
                         {% if result.competitors_data %}
                         <tr class="competitor-row hidden">
-                            <td colspan="{% if show_rank %}10{% else %}9{% endif %}" class="px-4 py-3 bg-slate-800/50">
+                            <td colspan="{% if show_rank %}11{% else %}10{% endif %}" class="px-4 py-3 bg-slate-800/50">
                                 {% with advice=result.targeting_advice %}
                                 <div class="{{ advice.2 }} border rounded-lg p-2.5 mb-4">
                                     <p class="text-[10px] uppercase tracking-wide text-slate-500 mb-1">ASO Targeting</p>
@@ -566,8 +578,8 @@
                         </tr>
                         {% endif %}
                         <!-- Trend detail row (loaded via AJAX) -->
-                        <tr class="trend-row hidden" data-keyword-id="{{ result.keyword.id }}" data-country="{{ result.country }}">
-                            <td colspan="{% if show_rank %}10{% else %}9{% endif %}" class="px-4 py-3 bg-slate-800/50">
+                        <tr class="trend-row hidden" data-keyword-id="{{ result.keyword.id }}" data-country="{{ result.country }}" data-platform="{{ result.platform }}">
+                            <td colspan="{% if show_rank %}11{% else %}10{% endif %}" class="px-4 py-3 bg-slate-800/50">
                                 <div class="trend-content flex items-center justify-center py-4">
                                     <svg class="w-5 h-5 animate-spin text-slate-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                                     <span class="text-slate-500 text-sm ml-2">Loading trend data…</span>
@@ -1079,12 +1091,13 @@ async function deleteResult(resultId, btn) {
 async function refreshKeyword(keywordId, btn) {
     const row = btn.closest('tr');
     row.classList.add('animate-pulse');
-    const country = getSelectedCountries()[0] || 'us';
+    const country = btn.dataset.country || getSelectedCountries()[0] || 'us';
+    const platform = btn.dataset.platform || 'ios';
     try {
         const resp = await fetch(`/keywords/${keywordId}/refresh/`, {
             method: 'POST',
             headers: {'X-CSRFToken': csrfToken, 'Content-Type': 'application/x-www-form-urlencoded'},
-            body: `country=${encodeURIComponent(country)}`,
+            body: `country=${encodeURIComponent(country)}&platform=${encodeURIComponent(platform)}`,
         });
         if (resp.ok) {
             row.classList.remove('animate-pulse');

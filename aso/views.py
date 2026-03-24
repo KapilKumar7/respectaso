@@ -91,7 +91,7 @@ def dashboard_view(request):
     latest_ids_qs = (
         SearchResult.objects
         .filter(**latest_filter)
-        .values("keyword_id", "country")
+        .values("keyword_id", "country", "platform")
         .annotate(latest_id=Max("id"))
         .values_list("latest_id", flat=True)
     )
@@ -197,13 +197,14 @@ def dashboard_view(request):
             .filter(
                 keyword_id=result.keyword_id,
                 country=result.country,
+                platform=result.platform,
                 searched_at__lt=result.searched_at,
             )
             .order_by("-searched_at")
             .first()
         )
         history_count = SearchResult.objects.filter(
-            keyword_id=result.keyword_id, country=result.country
+            keyword_id=result.keyword_id, country=result.country, platform=result.platform
         ).count()
         result.has_history = history_count > 1
         if prev:
@@ -273,6 +274,8 @@ def search_view(request):
     raw_keywords = form.cleaned_data["keywords"]
     app_id = form.cleaned_data.get("app_id")
     countries = form.cleaned_data.get("countries", ["us"])
+    platform = form.cleaned_data.get("platform", "ios")
+    entity = "macSoftware" if platform == "macos" else "software"
 
     # Parse comma-separated keywords, limit to 20
     keywords = [kw.strip() for kw in raw_keywords.split(",") if kw.strip()][:20]
@@ -322,7 +325,7 @@ def search_view(request):
             call_count += 1
 
             # iTunes Search
-            competitors = itunes_service.search_apps(kw_text, country=country, limit=25)
+            competitors = itunes_service.search_apps(kw_text, country=country, limit=25, entity=entity)
 
             # Difficulty Score
             difficulty_score, breakdown = difficulty_calc.calculate(
@@ -333,7 +336,7 @@ def search_view(request):
             app_rank = None
             if app and app.track_id:
                 app_rank = itunes_service.find_app_rank(
-                    kw_text, app.track_id, country=country
+                    kw_text, app.track_id, country=country, entity=entity
                 )
 
             # Popularity (estimated from competitor data)
@@ -355,12 +358,14 @@ def search_view(request):
                 competitors_data=competitors,
                 app_rank=app_rank,
                 country=country,
+                platform=platform,
             )
 
             country_results.append(
                 {
                     "keyword": kw_text,
                     "country": country,
+                    "platform": platform,
                     "popularity_score": popularity,
                     "difficulty_score": difficulty_score,
                     "difficulty_label": search_result.difficulty_label,
@@ -438,6 +443,8 @@ def opportunity_search_view(request):
 
     kw_text = form.cleaned_data["keyword"].strip().lower()
     app_id = form.cleaned_data.get("app_id")
+    platform = form.cleaned_data.get("platform", "ios")
+    entity = "macSoftware" if platform == "macos" else "software"
 
     if not kw_text:
         return JsonResponse({"error": "No keyword provided."}, status=400)
@@ -459,7 +466,7 @@ def opportunity_search_view(request):
         if i > 0:
             time.sleep(2)
 
-        competitors = itunes_service.search_apps(kw_text, country=country_code, limit=25)
+        competitors = itunes_service.search_apps(kw_text, country=country_code, limit=25, entity=entity)
         difficulty_score, breakdown = difficulty_calc.calculate(
             competitors, keyword=kw_text
         )
@@ -474,7 +481,7 @@ def opportunity_search_view(request):
         app_rank = None
         if app and app.track_id:
             app_rank = itunes_service.find_app_rank(
-                kw_text, app.track_id, country=country_code
+                kw_text, app.track_id, country=country_code, entity=entity
             )
 
         # Compute difficulty label from score (same logic as model property)
@@ -497,6 +504,7 @@ def opportunity_search_view(request):
 
         results.append({
             "country": country_code,
+            "platform": platform,
             "popularity": popularity,
             "difficulty": difficulty_score,
             "difficulty_label": diff_label,
@@ -551,6 +559,7 @@ def opportunity_save_view(request):
 
     for item in selected:
         country = item.get("country", "us")
+        platform = item.get("platform", "ios")
         # One entry per keyword+country per day (preserves historical trend data)
         SearchResult.upsert_today(
             keyword=keyword_obj,
@@ -560,6 +569,7 @@ def opportunity_save_view(request):
             competitors_data=item.get("competitors_data", []),
             app_rank=item.get("app_rank"),
             country=country,
+            platform=platform,
         )
         saved += 1
 
@@ -740,6 +750,8 @@ def keyword_refresh_view(request, keyword_id):
     """
     keyword_obj = get_object_or_404(Keyword, id=keyword_id)
     country = request.POST.get("country", "us")
+    platform = request.POST.get("platform", "ios")
+    entity = "macSoftware" if platform == "macos" else "software"
 
     itunes_service = ITunesSearchService()
     difficulty_calc = DifficultyCalculator()
@@ -748,7 +760,7 @@ def keyword_refresh_view(request, keyword_id):
 
     # Search iTunes
     competitors = itunes_service.search_apps(
-        keyword_obj.keyword, country=country, limit=25
+        keyword_obj.keyword, country=country, limit=25, entity=entity
     )
 
     # Calculate difficulty
@@ -761,7 +773,7 @@ def keyword_refresh_view(request, keyword_id):
     app = keyword_obj.app
     if app and app.track_id:
         app_rank = itunes_service.find_app_rank(
-            keyword_obj.keyword, app.track_id, country=country
+            keyword_obj.keyword, app.track_id, country=country, entity=entity
         )
 
     # Popularity (estimated from competitor data)
@@ -774,7 +786,7 @@ def keyword_refresh_view(request, keyword_id):
     )
     breakdown["download_estimates"] = download_estimates
 
-    # Save new result (one entry per keyword+country per day)
+    # Save new result (one entry per keyword+country+platform per day)
     search_result = SearchResult.upsert_today(
         keyword=keyword_obj,
         popularity_score=popularity,
@@ -783,6 +795,7 @@ def keyword_refresh_view(request, keyword_id):
         competitors_data=competitors,
         app_rank=app_rank,
         country=country,
+        platform=platform,
     )
 
     return JsonResponse({
@@ -796,6 +809,7 @@ def keyword_refresh_view(request, keyword_id):
             "difficulty_label": search_result.difficulty_label,
             "difficulty_color": search_result.difficulty_color,
             "country": country,
+            "platform": platform,
             "searched_at": search_result.searched_at.strftime("%b %d, %H:%M"),
             "app_rank": app_rank,
             "app_name": app.name if app else None,

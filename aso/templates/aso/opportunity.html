@@ -20,6 +20,10 @@
                     <label class="block text-xs font-medium text-slate-300 mb-1.5">Keyword</label>
                     {{ form.keyword }}
                 </div>
+                <div class="w-full sm:w-36">
+                    <label class="block text-xs font-medium text-slate-300 mb-1.5">Platform</label>
+                    {{ form.platform }}
+                </div>
                 <div class="w-full sm:w-48">
                     <label class="block text-xs font-medium text-slate-300 mb-1.5">App (optional)</label>
                     <select id="opp-app" class="w-full bg-slate-700 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
@@ -698,6 +702,7 @@ function toggleOppDetail(rowEl, index) {
 let lastResultsData = null;
 let lastKeyword = '';
 let lastAppId = null;
+let lastPlatform = 'ios';
 
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('opp-form');
@@ -743,6 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const keyword = form.querySelector('[name="keyword"]').value.trim();
         if (!keyword) return;
 
+        const platform = form.querySelector('[name="platform"]').value;
         const appId = document.getElementById('opp-app').value;
 
         // Show progress, set nav protection
@@ -771,6 +777,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('keyword', keyword);
             if (appId) formData.append('app_id', appId);
+            formData.append('platform', platform);
             formData.append('csrfmiddlewaretoken', csrfToken);
 
             const resp = await fetch('{% url "aso:opportunity_search" %}', {
@@ -792,6 +799,7 @@ document.addEventListener('DOMContentLoaded', function() {
             lastResultsData = data.results;
             lastKeyword = data.keyword;
             lastAppId = data.app_id;
+            lastPlatform = data.platform || platform;
 
             await new Promise(r => setTimeout(r, 500));
             progress.classList.add('hidden');
@@ -890,6 +898,7 @@ async function saveToHistory(resultsToSave) {
             body: JSON.stringify({
                 keyword: lastKeyword,
                 app_id: lastAppId,
+                platform: lastPlatform,
                 results: resultsToSave,
             }),
         });

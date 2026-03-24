@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -8,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Current version — update on each release
 VERSION = "1.5.1"
 
-# Load .env from persistent data volume (auto-generated SECRET_KEY lives there)
+# Load .env from persistent data volume
 DATA_DIR = Path(os.environ.get("DATA_DIR", BASE_DIR / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -21,13 +20,16 @@ SECRET_KEY = os.environ.get(
     "django-insecure-dev-key-change-me-in-production",
 )
 
-DEBUG = os.environ.get("DEBUG", "True").lower() in ("true", "1", "yes")
+# CHANGED: Set to False for production
+DEBUG = False 
 
+# CHANGED: Hardcoded the Render URL to fix DisallowedHost error
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "0.0.0.0",
     "respectaso.private",
+    "respectaso.onrender.com",
 ]
 
 INSTALLED_APPS = [
@@ -90,7 +92,7 @@ STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# CSRF trusted origins for local Docker access
+# CHANGED: Added HTTPS Render URL to allow logins and form submissions
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost",
     "http://127.0.0.1",
@@ -98,4 +100,5 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:9090",
     "http://127.0.0.1:9090",
     "http://respectaso.private:9090",
+    "https://respectaso.onrender.com",
 ]
